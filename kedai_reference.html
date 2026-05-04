@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kedai Online — PHP & MySQL Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@300;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --border: #1f2535;
+    --accent: #00d4aa;
+    --accent2: #ff6b35;
+    --accent3: #7b61ff;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --file-badge: #1e2a3a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  header {
+    position: relative;
+    padding: 60px 40px 40px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #0d0f14 0%, #111827 100%);
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .header-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 300;
+  }
+
+  /* DB Schema pill row */
+  .db-section {
+    padding: 40px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent3);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .db-table {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .db-table-header {
+    background: linear-gradient(135deg, #1a2035, #141720);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .db-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .icon-green { background: rgba(0,212,170,0.15); }
+  .icon-orange { background: rgba(255,107,53,0.15); }
+
+  .db-table-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .db-field {
+    padding: 10px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+    border-bottom: 1px solid rgba(31,37,53,0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .db-field:last-child { border-bottom: none; }
+  .field-name { color: var(--text); }
+  .field-type { color: var(--accent3); font-size: 11px; }
+  .field-pk {
+    background: rgba(0,212,170,0.15);
+    color: var(--accent);
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  .field-nn {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  /* SQL block */
+  .sql-block {
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin-top: 20px;
+  }
+
+  .sql-kw { color: #ff6b35; }
+  .sql-tbl { color: #00d4aa; }
+  .sql-type { color: #7b61ff; }
+  .sql-str { color: #fbbf24; }
+  .sql-comment { color: #475569; }
+
+  /* Files section */
+  .files-section {
+    padding: 40px;
+  }
+
+  .files-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .nav-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,212,170,0.08);
+  }
+
+  .file-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 28px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .file-card.hidden { display: none; }
+
+  .file-header {
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #161b27, #141720);
+  }
+
+  .file-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #f59e0b; }
+  .dot-green { background: #10b981; }
+
+  .file-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .file-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  .badge-config { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .badge-auth { background: rgba(123,97,255,0.15); color: #7b61ff; }
+  .badge-crud { background: rgba(0,212,170,0.15); color: var(--accent); }
+  .badge-view { background: rgba(255,107,53,0.15); color: var(--accent2); }
+  .badge-session { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+  .file-desc {
+    padding: 14px 24px;
+    font-size: 13px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+  }
+
+  .file-desc strong { color: var(--text); font-weight: 600; }
+
+  pre {
+    padding: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.75;
+    overflow-x: auto;
+    background: #080a0e;
+    color: #a8b4cc;
+  }
+
+  /* Syntax highlights */
+  .php-tag { color: #7b61ff; }
+  .php-kw { color: #ff6b35; }
+  .php-fn { color: #00d4aa; }
+  .php-str { color: #fbbf24; }
+  .php-var { color: #e879a0; }
+  .php-comment { color: #3d4f6b; }
+  .html-tag { color: #5b8ff9; }
+  .html-attr { color: #7b61ff; }
+  .html-val { color: #fbbf24; }
+
+  /* Flow diagram */
+  .flow-section {
+    padding: 40px;
+    border-top: 1px solid var(--border);
+  }
+
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .flow-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .flow-node .node-icon { font-size: 22px; margin-bottom: 6px; }
+  .flow-node .node-name { color: var(--accent); font-weight: 700; }
+  .flow-node .node-desc { color: var(--muted); font-size: 10px; margin-top: 4px; }
+
+  .arrow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+
+  .arrow-row span { color: var(--accent2); }
+
+  footer {
+    padding: 24px 40px;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-tag">// PHP + MySQL Reference</div>
+  <h1>Sistem <span>Kedai</span> Online</h1>
+  <p class="subtitle">Complete file reference — 11 PHP files · 2 MySQL tables · Full CRUD + Auth</p>
+</header>
+
+<!-- DATABASE SCHEMA -->
+<div class="db-section">
+  <div class="section-label">// 01 — MySQL Database: kedai</div>
+
+  <div class="tables-grid">
+
+    <!-- pengguna table -->
+    <div class="db-table">
+      <div class="db-table-header">
+        <div class="db-icon icon-green">👤</div>
+        <div class="db-table-name">pengguna</div>
+      </div>
+      <div class="db-field">
+        <span class="field-name">id</span>
+        <span class="field-type">INT AUTO_INCREMENT</span>
+        <span class="field-pk">PK</span>
+      </div>
+      <div class="db-field">
+        <span class="field-name">username</span>
+        <span class="field-type">VARCHAR(100)</span>
+        <span class="field-nn">NOT NULL</span>
+      </div>
+      <div class="db-field">
+        <span class="field-name">password</span>
+        <span class="field-type">VARCHAR(255)</span>
+        <span class="field-nn">hashed</span>
+      </div>
+      <div class="db-field">
+        <span class="field-name">emel</span>
+        <span class="field-type">VARCHAR(150)</span>
+        <span class="field-nn">NOT NULL</span>
+      </div>
+    </div>
+
+    <!-- produk table -->
+    <div class="db-table">
+      <div class="db-table-header">
+        <div class="db-icon icon-orange">📦</div>
+        <div class="db-table-name">produk</div>
+      </div>
+      <div class="db-field">
+        <span class="field-name">id</span>
+        <span class="field-type">INT AUTO_INCREMENT</span>
+        <span class="field-pk">PK</span>
+      </div>
+      <div class="db-field">
+        <span class="field-name">nama_produk</span>
+        <span class="field-type">VARCHAR(150)</span>
+        <span class="field-nn">NOT NULL</span>
+      </div>
+      <div class="db-field">
+        <span class="field-name">harga</span>
+        <span class="field-type">DECIMAL(10,2)</span>
+        <span class="field-nn">RM</span>
+      </div>
+      <div class="db-field">
+        <span class="field-name">stok</span>
+        <span class="field-type">INT</span>
+        <span class="field-nn">quantity</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SQL Setup -->
+  <div class="sql-block">
+<span class="sql-comment">-- Create database & tables</span>
+<span class="sql-kw">CREATE DATABASE</span> <span class="sql-tbl">kedai</span>;
+<span class="sql-kw">USE</span> <span class="sql-tbl">kedai</span>;
+
+<span class="sql-kw">CREATE TABLE</span> <span class="sql-tbl">pengguna</span> (
+  id        <span class="sql-type">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  username  <span class="sql-type">VARCHAR(100) NOT NULL UNIQUE</span>,
+  password  <span class="sql-type">VARCHAR(255) NOT NULL</span>,
+  emel      <span class="sql-type">VARCHAR(150) NOT NULL</span>
+);
+
+<span class="sql-kw">CREATE TABLE</span> <span class="sql-tbl">produk</span> (
+  id           <span class="sql-type">INT AUTO_INCREMENT PRIMARY KEY</span>,
+  nama_produk  <span class="sql-type">VARCHAR(150) NOT NULL</span>,
+  harga        <span class="sql-type">DECIMAL(10,2) NOT NULL</span>,
+  stok         <span class="sql-type">INT NOT NULL DEFAULT 0</span>
+);
+  </div>
+</div>
+
+<!-- FILE FLOW -->
+<div class="flow-section">
+  <div class="section-label">// 02 — Application Flow</div>
+
+  <div class="arrow-row">
+    <code>index.php</code> <span>→</span>
+    <code>register.php</code> / <code>login.php</code> <span>→</span>
+    <code>register1.php</code> / <code>login1.php</code> <span>→</span>
+    <code>main.php</code> <span>→</span>
+    <code>create.php</code> / <code>update.php</code> / <code>delete.php</code>
+  </div>
+
+  <div class="flow-grid">
+    <div class="flow-node"><div class="node-icon">🏠</div><div class="node-name">index.php</div><div class="node-desc">Landing page</div></div>
+    <div class="flow-node"><div class="node-icon">⚙️</div><div class="node-name">config.php</div><div class="node-desc">DB connection</div></div>
+    <div class="flow-node"><div class="node-icon">📝</div><div class="node-name">register.php</div><div class="node-desc">Register form</div></div>
+    <div class="flow-node"><div class="node-icon">✅</div><div class="node-name">register1.php</div><div class="node-desc">Insert user</div></div>
+    <div class="flow-node"><div class="node-icon">🔐</div><div class="node-name">login.php</div><div class="node-desc">Login form</div></div>
+    <div class="flow-node"><div class="node-icon">🔑</div><div class="node-name">login1.php</div><div class="node-desc">Auth & session</div></div>
+    <div class="flow-node"><div class="node-icon">📊</div><div class="node-name">main.php</div><div class="node-desc">Product list</div></div>
+    <div class="flow-node"><div class="node-icon">➕</div><div class="node-name">create.php</div><div class="node-desc">Add product</div></div>
+    <div class="flow-node"><div class="node-icon">✏️</div><div class="node-name">update.php</div><div class="node-desc">Edit product</div></div>
+    <div class="flow-node"><div class="node-icon">🗑️</div><div class="node-name">delete.php</div><div class="node-desc">Remove product</div></div>
+    <div class="flow-node"><div class="node-icon">🚪</div><div class="node-name">logout.php</div><div class="node-desc">Destroy session</div></div>
+  </div>
+</div>
+
+<!-- PHP FILES -->
+<div class="files-section">
+  <div class="section-label">// 03 — PHP Source Files</div>
+
+  <!-- Nav filter -->
+  <div class="files-nav">
+    <button class="nav-btn active" onclick="filterCards('all', this)">All Files</button>
+    <button class="nav-btn" onclick="filterCards('config', this)">Config</button>
+    <button class="nav-btn" onclick="filterCards('auth', this)">Auth</button>
+    <button class="nav-btn" onclick="filterCards('crud', this)">CRUD</button>
+    <button class="nav-btn" onclick="filterCards('view', this)">Views</button>
+    <button class="nav-btn" onclick="filterCards('session', this)">Session</button>
+  </div>
+
+  <!-- config.php -->
+  <div class="file-card" data-cat="config">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">config.php</span>
+      <span class="file-badge badge-config">CONFIG</span>
+    </div>
+    <div class="file-desc"><strong>Database connection</strong> — defines DB credentials and creates a global <code>$link</code> mysqli connection used across the app.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-comment">/* Database credentials */</span>
+<span class="php-fn">define</span>(<span class="php-str">'DB_SERVER'</span>, <span class="php-str">'localhost'</span>);
+<span class="php-fn">define</span>(<span class="php-str">'DB_USERNAME'</span>, <span class="php-str">'root'</span>);
+<span class="php-fn">define</span>(<span class="php-str">'DB_PASSWORD'</span>, <span class="php-str">''</span>);
+<span class="php-fn">define</span>(<span class="php-str">'DB_NAME'</span>, <span class="php-str">'kedai'</span>);
+
+<span class="php-comment">/* Attempt to connect to MySQL database */</span>
+<span class="php-var">$link</span> = <span class="php-fn">mysqli_connect</span>(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
+
+<span class="php-kw">if</span>(<span class="php-var">$link</span> === <span class="php-kw">false</span>){
+    <span class="php-fn">die</span>(<span class="php-str">"ERROR: Could not connect. "</span> . <span class="php-fn">mysqli_connect_error</span>());
+}
+<span class="php-tag">?&gt;</span></pre>
+  </div>
+
+  <!-- index.php -->
+  <div class="file-card" data-cat="view">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">index.php</span>
+      <span class="file-badge badge-view">VIEW</span>
+    </div>
+    <div class="file-desc"><strong>Landing page</strong> — hero image with "Sistem Kedai Online" title, two buttons linking to Register and Login pages.</div>
+    <pre><span class="html-tag">&lt;!DOCTYPE html&gt;</span>
+<span class="html-tag">&lt;html&gt;</span>
+<span class="html-tag">&lt;head&gt;</span>
+  <span class="html-tag">&lt;link</span> <span class="html-attr">href</span>=<span class="html-val">"https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"</span> <span class="html-attr">rel</span>=<span class="html-val">"stylesheet"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;style&gt;</span>
+    .hero-image {
+      background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("banner.jpg");
+      height: 50%; background-position: center;
+      background-size: cover; position: relative;
+    }
+    .hero-text {
+      text-align: center; position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%); color: white;
+    }
+    .registerlogin { text-align: center; margin-top: 100px; }
+  <span class="html-tag">&lt;/style&gt;</span>
+<span class="html-tag">&lt;/head&gt;</span>
+<span class="html-tag">&lt;body&gt;</span>
+  <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"hero-image"</span><span class="html-tag">&gt;</span>
+    <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"hero-text"</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;h1&gt;</span>Sistem Kedai Online<span class="html-tag">&lt;/h1&gt;</span>
+    <span class="html-tag">&lt;/div&gt;</span>
+  <span class="html-tag">&lt;/div&gt;</span>
+  <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"registerlogin"</span><span class="html-tag">&gt;</span>
+    <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"register.php"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-warning btn-lg"</span><span class="html-tag">&gt;</span>Register<span class="html-tag">&lt;/a&gt;</span>
+    <span class="html-tag">&lt;br&gt;&lt;br&gt;</span>
+    <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"login.php"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-primary btn-lg"</span><span class="html-tag">&gt;</span>Login<span class="html-tag">&lt;/a&gt;</span>
+  <span class="html-tag">&lt;/div&gt;</span>
+<span class="html-tag">&lt;/body&gt;&lt;/html&gt;</span></pre>
+  </div>
+
+  <!-- register.php -->
+  <div class="file-card" data-cat="auth view">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">register.php</span>
+      <span class="file-badge badge-auth">AUTH · FORM</span>
+    </div>
+    <div class="file-desc"><strong>Registration form</strong> — collects username, password, confirm password, and email. POSTs to <code>register1.php</code>.</div>
+    <pre><span class="html-tag">&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;</span>
+  <span class="html-tag">&lt;link</span> <span class="html-attr">href</span>=<span class="html-val">"bootstrap@5.3.8/css/bootstrap.min.css"</span> <span class="html-attr">rel</span>=<span class="html-val">"stylesheet"</span><span class="html-tag">&gt;</span>
+<span class="html-tag">&lt;/head&gt;&lt;body&gt;</span>
+  <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"container mt-5"</span><span class="html-tag">&gt;</span>
+    <span class="html-tag">&lt;h2&gt;</span>Register<span class="html-tag">&lt;/h2&gt;</span>
+    <span class="html-tag">&lt;form</span> <span class="html-attr">action</span>=<span class="html-val">"register1.php"</span> <span class="html-attr">method</span>=<span class="html-val">"POST"</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"text"</span>     <span class="html-attr">name</span>=<span class="html-val">"username"</span>         <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"password"</span>  <span class="html-attr">name</span>=<span class="html-val">"password"</span>         <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"password"</span>  <span class="html-attr">name</span>=<span class="html-val">"confirm_password"</span>  <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"email"</span>    <span class="html-attr">name</span>=<span class="html-val">"emel"</span>             <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;button</span> <span class="html-attr">type</span>=<span class="html-val">"submit"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-primary"</span><span class="html-tag">&gt;</span>Register<span class="html-tag">&lt;/button&gt;</span>
+    <span class="html-tag">&lt;/form&gt;</span>
+  <span class="html-tag">&lt;/div&gt;</span>
+<span class="html-tag">&lt;/body&gt;&lt;/html&gt;</span></pre>
+  </div>
+
+  <!-- register1.php -->
+  <div class="file-card" data-cat="auth crud">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">register1.php</span>
+      <span class="file-badge badge-crud">AUTH · INSERT</span>
+    </div>
+    <div class="file-desc"><strong>Registration handler</strong> — validates password match, hashes password with <code>password_hash()</code>, inserts into <code>pengguna</code> table, redirects to login.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-var">$conn</span> = <span class="php-fn">mysqli_connect</span>(<span class="php-str">"localhost"</span>, <span class="php-str">"root"</span>, <span class="php-str">""</span>, <span class="php-str">"kedai"</span>);
+
+<span class="php-kw">if</span> (<span class="php-var">$_SERVER</span>[<span class="php-str">"REQUEST_METHOD"</span>] == <span class="php-str">"POST"</span>) {
+    <span class="php-var">$username</span> = <span class="php-fn">mysqli_real_escape_string</span>(<span class="php-var">$conn</span>, <span class="php-var">$_POST</span>[<span class="php-str">'username'</span>]);
+    <span class="php-var">$password</span> = <span class="php-var">$_POST</span>[<span class="php-str">'password'</span>];
+    <span class="php-var">$confirm</span>  = <span class="php-var">$_POST</span>[<span class="php-str">'confirm_password'</span>];
+    <span class="php-var">$emel</span>     = <span class="php-fn">mysqli_real_escape_string</span>(<span class="php-var">$conn</span>, <span class="php-var">$_POST</span>[<span class="php-str">'emel'</span>]);
+
+    <span class="php-kw">if</span> (<span class="php-var">$password</span> !== <span class="php-var">$confirm</span>) {
+        <span class="php-fn">echo</span> <span class="php-str">"&lt;script&gt;alert('Passwords do not match!'); window.history.back();&lt;/script&gt;"</span>;
+        <span class="php-kw">exit</span>();
+    }
+
+    <span class="php-var">$hashed</span> = <span class="php-fn">password_hash</span>(<span class="php-var">$password</span>, PASSWORD_DEFAULT);
+
+    <span class="php-var">$sql</span> = <span class="php-str">"INSERT INTO pengguna (username, password, emel)
+             VALUES ('$username', '$hashed', '$emel')"</span>;
+
+    <span class="php-kw">if</span> (<span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-var">$sql</span>)) {
+        <span class="php-fn">echo</span> <span class="php-str">"&lt;script&gt;alert('Registration successful!');
+               window.location.href='login.php';&lt;/script&gt;"</span>;
+    }
+    <span class="php-fn">mysqli_close</span>(<span class="php-var">$conn</span>);
+}
+<span class="php-tag">?&gt;</span></pre>
+  </div>
+
+  <!-- login.php -->
+  <div class="file-card" data-cat="auth view">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">login.php</span>
+      <span class="file-badge badge-auth">AUTH · FORM</span>
+    </div>
+    <div class="file-desc"><strong>Login form</strong> — username and password fields. Shows alert-danger if <code>?error</code> in URL. POSTs to <code>login1.php</code>.</div>
+    <pre><span class="html-tag">&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;</span>
+  <span class="html-tag">&lt;link</span> <span class="html-attr">href</span>=<span class="html-val">"bootstrap@5.3.8/css/bootstrap.min.css"</span> <span class="html-attr">rel</span>=<span class="html-val">"stylesheet"</span><span class="html-tag">&gt;</span>
+<span class="html-tag">&lt;/head&gt;&lt;body&gt;</span>
+  <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"container mt-5"</span><span class="html-tag">&gt;</span>
+    <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"col-md-4"</span><span class="html-tag">&gt;</span>
+      <span class="html-tag">&lt;h2&gt;</span>Login<span class="html-tag">&lt;/h2&gt;</span>
+
+      <span class="php-tag">&lt;?php</span> <span class="php-kw">if</span>(<span class="php-fn">isset</span>(<span class="php-var">$_GET</span>[<span class="php-str">'error'</span>])): <span class="php-tag">?&gt;</span>
+        <span class="html-tag">&lt;div</span> <span class="html-attr">class</span>=<span class="html-val">"alert alert-danger"</span><span class="html-tag">&gt;</span>Invalid username or password.<span class="html-tag">&lt;/div&gt;</span>
+      <span class="php-tag">&lt;?php</span> <span class="php-kw">endif</span>; <span class="php-tag">?&gt;</span>
+
+      <span class="html-tag">&lt;form</span> <span class="html-attr">action</span>=<span class="html-val">"login1.php"</span> <span class="html-attr">method</span>=<span class="html-val">"POST"</span><span class="html-tag">&gt;</span>
+        <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"text"</span>     <span class="html-attr">name</span>=<span class="html-val">"username"</span> <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+        <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"password"</span>  <span class="html-attr">name</span>=<span class="html-val">"password"</span> <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+        <span class="html-tag">&lt;button</span> <span class="html-attr">type</span>=<span class="html-val">"submit"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-primary w-100"</span><span class="html-tag">&gt;</span>Login<span class="html-tag">&lt;/button&gt;</span>
+      <span class="html-tag">&lt;/form&gt;</span>
+    <span class="html-tag">&lt;/div&gt;</span>
+  <span class="html-tag">&lt;/div&gt;</span>
+<span class="html-tag">&lt;/body&gt;&lt;/html&gt;</span></pre>
+  </div>
+
+  <!-- login1.php -->
+  <div class="file-card" data-cat="auth session">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">login1.php</span>
+      <span class="file-badge badge-session">AUTH · SESSION</span>
+    </div>
+    <div class="file-desc"><strong>Login handler</strong> — fetches user from <code>pengguna</code>, verifies password with <code>password_verify()</code>, sets <code>$_SESSION['username']</code>, redirects to <code>main.php</code>.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-fn">session_start</span>();
+
+<span class="php-var">$conn</span> = <span class="php-fn">mysqli_connect</span>(<span class="php-str">"localhost"</span>, <span class="php-str">"root"</span>, <span class="php-str">""</span>, <span class="php-str">"kedai"</span>);
+
+<span class="php-kw">if</span> (<span class="php-var">$_SERVER</span>[<span class="php-str">"REQUEST_METHOD"</span>] == <span class="php-str">"POST"</span>) {
+    <span class="php-var">$username</span> = <span class="php-fn">mysqli_real_escape_string</span>(<span class="php-var">$conn</span>, <span class="php-var">$_POST</span>[<span class="php-str">'username'</span>]);
+    <span class="php-var">$password</span> = <span class="php-var">$_POST</span>[<span class="php-str">'password'</span>];
+
+    <span class="php-var">$sql</span>    = <span class="php-str">"SELECT * FROM pengguna WHERE username = '$username'"</span>;
+    <span class="php-var">$result</span> = <span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-var">$sql</span>);
+
+    <span class="php-kw">if</span> (<span class="php-fn">mysqli_num_rows</span>(<span class="php-var">$result</span>) === 1) {
+        <span class="php-var">$row</span> = <span class="php-fn">mysqli_fetch_assoc</span>(<span class="php-var">$result</span>);
+
+        <span class="php-kw">if</span> (<span class="php-fn">password_verify</span>(<span class="php-var">$password</span>, <span class="php-var">$row</span>[<span class="php-str">'password'</span>])) {
+            <span class="php-var">$_SESSION</span>[<span class="php-str">'username'</span>] = <span class="php-var">$row</span>[<span class="php-str">'username'</span>];
+            <span class="php-fn">header</span>(<span class="php-str">"Location: main.php"</span>);
+            <span class="php-kw">exit</span>();
+        } <span class="php-kw">else</span> {
+            <span class="php-fn">echo</span> <span class="php-str">"&lt;script&gt;alert('Incorrect password!'); window.history.back();&lt;/script&gt;"</span>;
+        }
+    } <span class="php-kw">else</span> {
+        <span class="php-fn">echo</span> <span class="php-str">"&lt;script&gt;alert('User not found!'); window.history.back();&lt;/script&gt;"</span>;
+    }
+    <span class="php-fn">mysqli_close</span>(<span class="php-var">$conn</span>);
+}
+<span class="php-tag">?&gt;</span></pre>
+  </div>
+
+  <!-- main.php -->
+  <div class="file-card" data-cat="crud view">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">main.php</span>
+      <span class="file-badge badge-view">DASHBOARD · READ</span>
+    </div>
+    <div class="file-desc"><strong>Product dashboard</strong> — session-protected. Fetches all rows from <code>produk</code> and renders them in a Bootstrap table with Update/Delete action buttons.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-fn">session_start</span>();
+<span class="php-kw">if</span> (!<span class="php-fn">isset</span>(<span class="php-var">$_SESSION</span>[<span class="php-str">'username'</span>])) { <span class="php-fn">header</span>(<span class="php-str">"Location: login.php"</span>); <span class="php-kw">exit</span>(); }
+
+<span class="php-var">$conn</span>   = <span class="php-fn">mysqli_connect</span>(<span class="php-str">"localhost"</span>, <span class="php-str">"root"</span>, <span class="php-str">""</span>, <span class="php-str">"kedai"</span>);
+<span class="php-var">$result</span> = <span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-str">"SELECT * FROM produk"</span>);
+<span class="php-tag">?&gt;</span>
+<span class="html-tag">&lt;nav</span> <span class="html-attr">class</span>=<span class="html-val">"navbar navbar-dark bg-dark"</span><span class="html-tag">&gt;</span>
+  Welcome, <span class="php-tag">&lt;?= </span><span class="php-var">$_SESSION</span>[<span class="php-str">'username'</span>]<span class="php-tag"> ?&gt;</span>
+  <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"logout.php"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-danger btn-sm"</span><span class="html-tag">&gt;</span>Logout<span class="html-tag">&lt;/a&gt;</span>
+<span class="html-tag">&lt;/nav&gt;</span>
+
+<span class="html-tag">&lt;table</span> <span class="html-attr">class</span>=<span class="html-val">"table table-bordered table-striped"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;thead</span> <span class="html-attr">class</span>=<span class="html-val">"table-dark"</span><span class="html-tag">&gt;</span>
+    <span class="html-tag">&lt;tr&gt;&lt;th&gt;</span>No<span class="html-tag">&lt;/th&gt;&lt;th&gt;</span>Product Name<span class="html-tag">&lt;/th&gt;&lt;th&gt;</span>Price (RM)<span class="html-tag">&lt;/th&gt;&lt;th&gt;</span>Stock<span class="html-tag">&lt;/th&gt;&lt;th&gt;</span>Actions<span class="html-tag">&lt;/th&gt;&lt;/tr&gt;</span>
+  <span class="html-tag">&lt;/thead&gt;</span>
+  <span class="html-tag">&lt;tbody&gt;</span>
+    <span class="php-tag">&lt;?php</span> <span class="php-var">$no</span>=1; <span class="php-kw">while</span>(<span class="php-var">$row</span>=<span class="php-fn">mysqli_fetch_assoc</span>(<span class="php-var">$result</span>)): <span class="php-tag">?&gt;</span>
+    <span class="html-tag">&lt;tr&gt;</span>
+      <span class="html-tag">&lt;td&gt;</span><span class="php-tag">&lt;?= </span><span class="php-var">$no</span>++<span class="php-tag"> ?&gt;</span><span class="html-tag">&lt;/td&gt;</span>
+      <span class="html-tag">&lt;td&gt;</span><span class="php-tag">&lt;?= </span><span class="php-var">$row</span>[<span class="php-str">'nama_produk'</span>]<span class="php-tag"> ?&gt;</span><span class="html-tag">&lt;/td&gt;</span>
+      <span class="html-tag">&lt;td&gt;</span><span class="php-tag">&lt;?= </span><span class="php-fn">number_format</span>(<span class="php-var">$row</span>[<span class="php-str">'harga'</span>],2)<span class="php-tag"> ?&gt;</span><span class="html-tag">&lt;/td&gt;</span>
+      <span class="html-tag">&lt;td&gt;</span><span class="php-tag">&lt;?= </span><span class="php-var">$row</span>[<span class="php-str">'stok'</span>]<span class="php-tag"> ?&gt;</span><span class="html-tag">&lt;/td&gt;</span>
+      <span class="html-tag">&lt;td&gt;</span>
+        <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"update.php?id=&lt;?= $row['id'] ?&gt;"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-warning btn-sm"</span><span class="html-tag">&gt;</span>Update<span class="html-tag">&lt;/a&gt;</span>
+        <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"delete.php?id=&lt;?= $row['id'] ?&gt;"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-danger btn-sm"</span><span class="html-tag">&gt;</span>Delete<span class="html-tag">&lt;/a&gt;</span>
+      <span class="html-tag">&lt;/td&gt;</span>
+    <span class="html-tag">&lt;/tr&gt;</span>
+    <span class="php-tag">&lt;?php</span> <span class="php-kw">endwhile</span>; <span class="php-tag">?&gt;</span>
+  <span class="html-tag">&lt;/tbody&gt;</span>
+<span class="html-tag">&lt;/table&gt;</span></pre>
+  </div>
+
+  <!-- create.php -->
+  <div class="file-card" data-cat="crud">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">create.php</span>
+      <span class="file-badge badge-crud">CRUD · INSERT</span>
+    </div>
+    <div class="file-desc"><strong>Add product</strong> — session-protected form + handler in one file. On POST, inserts <code>nama_produk</code>, <code>harga</code>, <code>stok</code> into <code>produk</code> table.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-fn">session_start</span>();
+<span class="php-kw">if</span> (!<span class="php-fn">isset</span>(<span class="php-var">$_SESSION</span>[<span class="php-str">'username'</span>])) { <span class="php-fn">header</span>(<span class="php-str">"Location: login.php"</span>); <span class="php-kw">exit</span>(); }
+
+<span class="php-var">$conn</span> = <span class="php-fn">mysqli_connect</span>(<span class="php-str">"localhost"</span>, <span class="php-str">"root"</span>, <span class="php-str">""</span>, <span class="php-str">"kedai"</span>);
+
+<span class="php-kw">if</span> (<span class="php-var">$_SERVER</span>[<span class="php-str">"REQUEST_METHOD"</span>] == <span class="php-str">"POST"</span>) {
+    <span class="php-var">$nama</span>  = <span class="php-fn">mysqli_real_escape_string</span>(<span class="php-var">$conn</span>, <span class="php-var">$_POST</span>[<span class="php-str">'nama_produk'</span>]);
+    <span class="php-var">$harga</span> = <span class="php-var">$_POST</span>[<span class="php-str">'harga'</span>];
+    <span class="php-var">$stok</span>  = <span class="php-var">$_POST</span>[<span class="php-str">'stok'</span>];
+
+    <span class="php-var">$sql</span> = <span class="php-str">"INSERT INTO produk (nama_produk, harga, stok)
+             VALUES ('$nama', '$harga', '$stok')"</span>;
+
+    <span class="php-kw">if</span> (<span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-var">$sql</span>)) {
+        <span class="php-fn">echo</span> <span class="php-str">"&lt;script&gt;alert('Product added!');
+               window.location.href='main.php';&lt;/script&gt;"</span>;
+    }
+}
+<span class="php-tag">?&gt;</span>
+<span class="html-tag">&lt;form</span> <span class="html-attr">method</span>=<span class="html-val">"POST"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"text"</span>   <span class="html-attr">name</span>=<span class="html-val">"nama_produk"</span> <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"number"</span> <span class="html-attr">name</span>=<span class="html-val">"harga"</span>        <span class="html-attr">step</span>=<span class="html-val">"0.01"</span> <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;input</span> <span class="html-attr">type</span>=<span class="html-val">"number"</span> <span class="html-attr">name</span>=<span class="html-val">"stok"</span>         <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">required</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;button</span> <span class="html-attr">type</span>=<span class="html-val">"submit"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-success"</span><span class="html-tag">&gt;</span>Save Product<span class="html-tag">&lt;/button&gt;</span>
+  <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"main.php"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-secondary"</span><span class="html-tag">&gt;</span>Back<span class="html-tag">&lt;/a&gt;</span>
+<span class="html-tag">&lt;/form&gt;</span></pre>
+  </div>
+
+  <!-- update.php -->
+  <div class="file-card" data-cat="crud">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">update.php</span>
+      <span class="file-badge badge-crud">CRUD · UPDATE</span>
+    </div>
+    <div class="file-desc"><strong>Edit product</strong> — receives <code>?id=</code> via GET, fetches current record, pre-fills form. On POST, runs UPDATE query and redirects to <code>main.php</code>.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-fn">session_start</span>();
+<span class="php-kw">if</span> (!<span class="php-fn">isset</span>(<span class="php-var">$_SESSION</span>[<span class="php-str">'username'</span>])) { <span class="php-fn">header</span>(<span class="php-str">"Location: login.php"</span>); <span class="php-kw">exit</span>(); }
+
+<span class="php-var">$conn</span> = <span class="php-fn">mysqli_connect</span>(<span class="php-str">"localhost"</span>, <span class="php-str">"root"</span>, <span class="php-str">""</span>, <span class="php-str">"kedai"</span>);
+<span class="php-var">$id</span>   = <span class="php-var">$_GET</span>[<span class="php-str">'id'</span>];
+
+<span class="php-comment">// Fetch current product data</span>
+<span class="php-var">$result</span> = <span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-str">"SELECT * FROM produk WHERE id=$id"</span>);
+<span class="php-var">$row</span>    = <span class="php-fn">mysqli_fetch_assoc</span>(<span class="php-var">$result</span>);
+
+<span class="php-kw">if</span> (<span class="php-var">$_SERVER</span>[<span class="php-str">"REQUEST_METHOD"</span>] == <span class="php-str">"POST"</span>) {
+    <span class="php-var">$nama</span>  = <span class="php-fn">mysqli_real_escape_string</span>(<span class="php-var">$conn</span>, <span class="php-var">$_POST</span>[<span class="php-str">'nama_produk'</span>]);
+    <span class="php-var">$harga</span> = <span class="php-var">$_POST</span>[<span class="php-str">'harga'</span>];
+    <span class="php-var">$stok</span>  = <span class="php-var">$_POST</span>[<span class="php-str">'stok'</span>];
+
+    <span class="php-var">$sql</span> = <span class="php-str">"UPDATE produk
+             SET nama_produk='$nama', harga='$harga', stok='$stok'
+             WHERE id=$id"</span>;
+
+    <span class="php-kw">if</span> (<span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-var">$sql</span>)) {
+        <span class="php-fn">echo</span> <span class="php-str">"&lt;script&gt;alert('Updated!'); window.location.href='main.php';&lt;/script&gt;"</span>;
+    }
+}
+<span class="php-tag">?&gt;</span>
+<span class="html-tag">&lt;form</span> <span class="html-attr">method</span>=<span class="html-val">"POST"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;input</span> <span class="html-attr">name</span>=<span class="html-val">"nama_produk"</span> <span class="html-attr">value</span>=<span class="html-val">"&lt;?= $row['nama_produk'] ?&gt;"</span> <span class="html-attr">class</span>=<span class="html-val">"form-control"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;input</span> <span class="html-attr">name</span>=<span class="html-val">"harga"</span>        <span class="html-attr">value</span>=<span class="html-val">"&lt;?= $row['harga'] ?&gt;"</span>        <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">type</span>=<span class="html-val">"number"</span> <span class="html-attr">step</span>=<span class="html-val">"0.01"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;input</span> <span class="html-attr">name</span>=<span class="html-val">"stok"</span>         <span class="html-attr">value</span>=<span class="html-val">"&lt;?= $row['stok'] ?&gt;"</span>         <span class="html-attr">class</span>=<span class="html-val">"form-control"</span> <span class="html-attr">type</span>=<span class="html-val">"number"</span><span class="html-tag">&gt;</span>
+  <span class="html-tag">&lt;button</span> <span class="html-attr">type</span>=<span class="html-val">"submit"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-warning"</span><span class="html-tag">&gt;</span>Update<span class="html-tag">&lt;/button&gt;</span>
+  <span class="html-tag">&lt;a</span> <span class="html-attr">href</span>=<span class="html-val">"main.php"</span> <span class="html-attr">class</span>=<span class="html-val">"btn btn-secondary"</span><span class="html-tag">&gt;</span>Cancel<span class="html-tag">&lt;/a&gt;</span>
+<span class="html-tag">&lt;/form&gt;</span></pre>
+  </div>
+
+  <!-- delete.php -->
+  <div class="file-card" data-cat="crud">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">delete.php</span>
+      <span class="file-badge badge-crud">CRUD · DELETE</span>
+    </div>
+    <div class="file-desc"><strong>Delete product</strong> — session-protected. Receives <code>?id=</code> via GET, runs DELETE query, redirects back to <code>main.php</code>.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-fn">session_start</span>();
+<span class="php-kw">if</span> (!<span class="php-fn">isset</span>(<span class="php-var">$_SESSION</span>[<span class="php-str">'username'</span>])) { <span class="php-fn">header</span>(<span class="php-str">"Location: login.php"</span>); <span class="php-kw">exit</span>(); }
+
+<span class="php-var">$conn</span> = <span class="php-fn">mysqli_connect</span>(<span class="php-str">"localhost"</span>, <span class="php-str">"root"</span>, <span class="php-str">""</span>, <span class="php-str">"kedai"</span>);
+
+<span class="php-kw">if</span> (<span class="php-fn">isset</span>(<span class="php-var">$_GET</span>[<span class="php-str">'id'</span>])) {
+    <span class="php-var">$id</span>  = <span class="php-var">$_GET</span>[<span class="php-str">'id'</span>];
+    <span class="php-var">$sql</span> = <span class="php-str">"DELETE FROM produk WHERE id = $id"</span>;
+
+    <span class="php-kw">if</span> (<span class="php-fn">mysqli_query</span>(<span class="php-var">$conn</span>, <span class="php-var">$sql</span>)) {
+        <span class="php-fn">header</span>(<span class="php-str">"Location: main.php"</span>);
+    } <span class="php-kw">else</span> {
+        <span class="php-fn">echo</span> <span class="php-str">"Error: "</span> . <span class="php-fn">mysqli_error</span>(<span class="php-var">$conn</span>);
+    }
+}
+<span class="php-tag">?&gt;</span></pre>
+  </div>
+
+  <!-- logout.php -->
+  <div class="file-card" data-cat="session">
+    <div class="file-header">
+      <div class="file-dot dot-red"></div><div class="file-dot dot-yellow"></div><div class="file-dot dot-green"></div>
+      <span class="file-name">logout.php</span>
+      <span class="file-badge badge-session">SESSION · DESTROY</span>
+    </div>
+    <div class="file-desc"><strong>Logout handler</strong> — calls <code>session_unset()</code> and <code>session_destroy()</code> to clear all session data, then redirects to <code>login.php</code>.</div>
+    <pre><span class="php-tag">&lt;?php</span>
+<span class="php-fn">session_start</span>();
+<span class="php-fn">session_unset</span>();   <span class="php-comment">// Remove all session variables</span>
+<span class="php-fn">session_destroy</span>(); <span class="php-comment">// Destroy the session</span>
+<span class="php-fn">header</span>(<span class="php-str">"Location: login.php"</span>);
+<span class="php-kw">exit</span>();
+<span class="php-tag">?&gt;</span></pre>
+  </div>
+
+</div>
+
+<footer>
+  <span>kedai/ — 11 PHP files · database: kedai · tables: pengguna, produk</span>
+  <span>Bootstrap 5.3.8 · PHP MySQLi · password_hash()</span>
+</footer>
+
+<script>
+function filterCards(cat, btn) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.file-card').forEach(card => {
+    if (cat === 'all') {
+      card.classList.remove('hidden');
+    } else {
+      const cats = (card.dataset.cat || '').split(' ');
+      card.classList.toggle('hidden', !cats.includes(cat));
+    }
+  });
+}
+</script>
+</body>
+</html>
